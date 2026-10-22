@@ -19,6 +19,7 @@
     @media(max-width:1050px){.nav-links{gap:16px}.nav-links a{font-size:11px}.hero-grid{gap:38px}.hero h1{font-size:clamp(49px,6.5vw,70px)}.experience-card{grid-template-columns:190px 1fr}.achievement-grid{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:820px){.container{width:min(100% - 42px,var(--max))}.nav-links,.nav-cta{display:none}.menu-toggle{display:inline-flex}.hero{padding:54px 0 62px}.hero-grid{grid-template-columns:1fr;gap:34px}.hero-copy{max-width:680px}.hero h1{max-width:700px}.portrait-wrap{justify-self:center;width:min(100%,350px);margin-inline:auto}.profile-card{padding:11px}.portrait-frame{aspect-ratio:4/4.7}.about-grid{grid-template-columns:1fr;gap:25px}.capability-grid{grid-template-columns:1fr 1fr}.experience-card{grid-template-columns:1fr;gap:20px}.experience-meta{border-right:0;border-bottom:1px solid var(--border);padding:0 0 18px}.experience-meta h3{margin-top:8px}.experience-meta .employment-type{margin-top:8px}.project-grid{grid-template-columns:1fr 1fr}.cert-grid{grid-template-columns:1fr 1fr}.contact-panel{grid-template-columns:1fr;gap:30px}.contact-card{max-width:600px}}
     @media(max-width:560px){.container{width:calc(100% - 36px)}.nav-inner{min-height:67px}.brand{font-size:16px}.hero{padding:42px 0 53px}.hero h1{font-size:clamp(45px,13vw,65px);margin-top:18px}.hero-role{font-size:15px}.hero-description{font-size:13px}.hero-actions .btn{padding:12px 14px;font-size:11px}.hero-meta{gap:12px;font-size:11px}.section{padding:61px 0}.section-heading{margin-bottom:27px}.section-heading h2{font-size:34px}.lead-copy{font-size:17px}.capability-grid{grid-template-columns:1fr}.capability-card{min-height:auto}.experience-card{padding:22px}.experience-bullets li{font-size:11px}.project-toolbar{align-items:flex-start}.filters{gap:6px}.filter-btn{font-size:10px;padding:7px 9px}.project-grid{grid-template-columns:1fr;gap:14px}.project-visual{height:124px}.project-body{padding:19px}.project-body h3{font-size:18px}.skill-row{grid-template-columns:1fr;gap:14px;padding:20px 0}.skill-row h3{font-size:13px}.chips{gap:6px}.chips span{font-size:9px}.achievement-grid{grid-template-columns:1fr 1fr;gap:10px}.achievement-card{padding:16px;min-height:185px}.achievement-card h3{font-size:12px}.achievement-card p{font-size:10px}.education-item{grid-template-columns:1fr;gap:5px}.education-item time{text-align:left;font-size:10px}.cert-grid{grid-template-columns:1fr}.cert-card{min-height:0;padding:19px}.cert-head{margin-bottom:14px}.contact-section{padding:61px 0 70px}.contact-section h2{font-size:43px}.contact-intro{font-size:13px}.contact-card{padding:17px}.contact-item{font-size:11px}.footer-inner{align-items:flex-start;flex-direction:column;gap:10px}.modal-backdrop{padding:10px}.case-modal{padding:23px 19px;max-height:92vh}.case-modal h2{font-size:25px}.modal-two-col{grid-template-columns:1fr;gap:18px}}
+    #scene3d{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;opacity:0;transition:opacity 1.2s ease}#scene3d.ready{opacity:1}.tilt{transform-style:preserve-3d;will-change:transform}.tilt-glare{position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle at var(--gx,50%) var(--gy,50%),#ffffff14,transparent 55%);opacity:0;transition:opacity .3s}.tilt:hover .tilt-glare{opacity:1}.project-card,.capability-card,.achievement-card,.cert-card{position:relative}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.reveal{opacity:1;transform:none}.project-card:hover,.capability-card:hover,.cert-card:hover,.achievement-card:hover{transform:none}}
   </style>
 </head>
@@ -163,6 +164,95 @@
     renderProjects();observeReveals();
     const sectionObserver=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){document.querySelectorAll('.nav-links a').forEach(a=>{if(a.getAttribute('href')==='#'+e.target.id)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current')})}}),{rootMargin:'-25% 0px -65% 0px'});document.querySelectorAll('main section[id]').forEach(s=>sectionObserver.observe(s));
     document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const target=document.querySelector(a.getAttribute('href'));if(target){e.preventDefault();target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});if(target.id)history.replaceState(null,'','#'+target.id)}}));
+  </script>
+  <canvas id="scene3d" aria-hidden="true"></canvas>
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const canvas = document.getElementById("scene3d");
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" }); }
+    catch (e) { canvas.remove(); }
+    if (renderer) {
+      const mobile = innerWidth < 820;
+      renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x080a10, 0.045);
+      const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+      camera.position.set(0, 0, 9);
+
+      const core = new THREE.Group();
+      scene.add(core);
+      // Network core: wireframe icosahedron + glowing nodes + inner solid
+      const geo = new THREE.IcosahedronGeometry(2.1, 2);
+      core.add(new THREE.LineSegments(new THREE.WireframeGeometry(geo), new THREE.LineBasicMaterial({ color: 0x7c89ff, transparent: true, opacity: 0.28 })));
+      core.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x62d6e8, size: 0.07, transparent: true, opacity: 0.95 })));
+      const inner = new THREE.Mesh(new THREE.IcosahedronGeometry(1.25, 1), new THREE.MeshStandardMaterial({ color: 0x1a2350, emissive: 0x2a3590, emissiveIntensity: 0.6, metalness: 0.7, roughness: 0.25, flatShading: true }));
+      core.add(inner);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+      const l1 = new THREE.PointLight(0x62d6e8, 40, 30); l1.position.set(4, 3, 5); scene.add(l1);
+      const l2 = new THREE.PointLight(0x7c89ff, 40, 30); l2.position.set(-4, -2, 4); scene.add(l2);
+
+      // Orbiting rings with satellites
+      const rings = [];
+      [[3.0, 0x62d6e8, 1.1, 0.3], [3.6, 0x7c89ff, -0.6, 1.0], [4.2, 0x6ed8a1, 0.4, -0.7]].forEach(([r, c, rx, ry], i) => {
+        const g = new THREE.Group(); g.rotation.set(rx, ry, 0);
+        g.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.006, 8, 160), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35 })));
+        const sat = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), new THREE.MeshBasicMaterial({ color: c }));
+        sat.position.x = r; g.add(sat);
+        core.add(g); rings.push({ g, speed: 0.25 + i * 0.12 });
+      });
+
+      // Particle field
+      const N = mobile ? 900 : 2200, pos = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) { pos[i*3] = (Math.random() - .5) * 40; pos[i*3+1] = (Math.random() - .5) * 40; pos[i*3+2] = (Math.random() - .5) * 30 - 5; }
+      const pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      const stars = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xa9b4ff, size: 0.035, transparent: true, opacity: 0.7 }));
+      scene.add(stars);
+
+      const resize = () => {
+        const w = innerWidth, h = innerHeight;
+        renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+        // Sit beside hero copy on desktop, centered behind on mobile
+        core.position.set(w > 820 ? 3.2 : 0, w > 820 ? 0.2 : 1.5, w > 820 ? 0 : -3);
+      };
+      resize(); addEventListener("resize", resize);
+
+      const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+      addEventListener("pointermove", e => { mouse.tx = e.clientX / innerWidth - .5; mouse.ty = e.clientY / innerHeight - .5; });
+      const clock = new THREE.Clock();
+      const frame = () => {
+        const t = clock.getElapsedTime(), s = scrollY / innerHeight;
+        mouse.x += (mouse.tx - mouse.x) * .05; mouse.y += (mouse.ty - mouse.y) * .05;
+        core.rotation.y = t * .15 + mouse.x * .8 + s * .6;
+        core.rotation.x = mouse.y * .5 + s * .2;
+        inner.rotation.x = -t * .3; inner.rotation.y = t * .2;
+        const pulse = 1 + Math.sin(t * 1.6) * .03; inner.scale.setScalar(pulse);
+        rings.forEach(r => r.g.rotation.z = t * r.speed);
+        stars.rotation.y = t * .01 + mouse.x * .1; stars.position.y = s * 1.2;
+        camera.position.z = 9 + Math.min(s, 3) * 1.5;
+        renderer.render(scene, camera);
+        if (!reduce) requestAnimationFrame(frame);
+      };
+      frame();
+      canvas.classList.add("ready");
+      document.addEventListener("visibilitychange", () => { if (!document.hidden && !reduce) clock.getDelta(); });
+    }
+
+    // 3D tilt on cards (pointer devices only)
+    if (!reduce && matchMedia("(hover: hover)").matches) {
+      document.querySelectorAll(".project-card,.capability-card,.achievement-card,.cert-card,.profile-card").forEach(el => {
+        el.classList.add("tilt");
+        const glare = document.createElement("span"); glare.className = "tilt-glare"; el.appendChild(glare);
+        el.addEventListener("pointermove", e => {
+          const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+          el.style.transition = "transform .08s";
+          el.style.transform = `perspective(900px) rotateX(${(.5 - y) * 10}deg) rotateY(${(x - .5) * 12}deg) translateZ(8px)`;
+          el.style.setProperty("--gx", x * 100 + "%"); el.style.setProperty("--gy", y * 100 + "%");
+        });
+        el.addEventListener("pointerleave", () => { el.style.transition = "transform .5s cubic-bezier(.2,.7,.2,1)"; el.style.transform = ""; });
+      });
+    }
   </script>
 </body>
 </html>
